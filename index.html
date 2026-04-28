@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>庞加莱球 · 偏振光测量 | WZP-1 实验仪</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+      background: #0d1116;
+      display: flex;
+      height: 100vh;
+      width: 100vw;
+      overflow: hidden;
+      color: #d0d7e2;
+    }
+    #canvas-container {
+      flex: 1;
+      position: relative;
+      cursor: grab;
+      min-width: 0;
+      background: radial-gradient(circle at center, #161c26 0%, #0a0d14 100%);
+    }
+    #canvas-container:active { cursor: grabbing; }
+    .hint {
+      position: absolute;
+      bottom: 16px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: rgba(200,210,230,0.5);
+      font-size: 13px;
+      pointer-events: none;
+    }
+    .legend {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      pointer-events: none;
+      font-size: 12px;
+      color: rgba(220,230,250,0.7);
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .legend span { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; vertical-align: middle; }
+    #panel {
+      width: 440px;
+      background: #151a22;
+      border-left: 1px solid #283141;
+      display: flex;
+      flex-direction: column;
+      box-shadow: -6px 0 28px rgba(0,0,0,0.6);
+      z-index: 10;
+      overflow-y: auto;
+      padding: 22px 18px;
+      gap: 16px;
+    }
+    .panel-header h2 {
+      font-size: 1.35rem;
+      font-weight: 700;
+      background: linear-gradient(135deg, #8ab4f8, #c4a7ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .subtitle { font-size: 0.72rem; color: #7a8799; margin-top: 2px; }
+    .btn {
+      padding: 10px 18px;
+      border-radius: 8px;
+      border: none;
+      font-weight: 600;
+      cursor: pointer;
+      font-size: 0.85rem;
+      transition: all 0.2s;
+      font-family: inherit;
+    }
+    .btn-primary { background: #3f6ce8; color: white; width: 100%; }
+    .btn-primary:hover { background: #2d54cf; }
+    .btn-outline {
+      background: transparent;
+      border: 1px solid #354050;
+      color: #b0bdd0;
+    }
+    .btn-outline:hover { background: #222b39; }
+    .back-btn {
+      align-self: flex-start;
+      background: transparent;
+      border: 1px solid #2f3a4d;
+      color: #a2adc1;
+      padding: 7px 16px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.8rem;
+      margin-bottom: 4px;
+    }
+    .back-btn:hover { background: #212b38; color: #fff; }
+    .card {
+      background: #1b212b;
+      border-radius: 12px;
+      padding: 15px;
+      border: 1px solid #283141;
+    }
+    .card h4 { font-size: 0.9rem; font-weight: 600; margin-bottom: 10px; color: #b9c6de; }
+    .input-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+    .input-group { flex: 1; min-width: 60px; display: flex; flex-direction: column; }
+    .input-group label { font-size: 0.7rem; color: #8b95ab; margin-bottom: 3px; }
+    .input-group input {
+      width: 100%;
+      padding: 8px 8px;
+      border-radius: 6px;
+      border: 1px solid #354050;
+      background: #10151d;
+      color: #e0e6f2;
+      font-size: 0.85rem;
+      font-family: 'JetBrains Mono', monospace;
+      outline: none;
+    }
+    .input-group input:focus { border-color: #8ab4f8; box-shadow: 0 0 0 3px rgba(138,180,248,0.15); }
+    .result-box {
+      background: #131822;
+      border-radius: 10px;
+      padding: 12px;
+      border: 1px solid #283141;
+      font-size: 0.8rem;
+    }
+    .val { font-family: 'JetBrains Mono', monospace; color: #ffd966; }
+    .data-list { max-height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; }
+    .data-item {
+      display: flex; align-items: center; justify-content: space-between;
+      background: #121820; padding: 8px 10px; border-radius: 7px;
+      border: 1px solid #252e3d; font-size: 0.72rem;
+    }
+    .color-dot { width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; margin-right: 8px; }
+    .btn-danger { background: transparent; border: 1px solid #e0556a; color: #e0556a; font-size: 0.68rem; padding: 3px 10px; cursor: pointer; border-radius: 5px; }
+    .knowledge-text {
+      font-size: 0.8rem;
+      line-height: 1.7;
+      color: #bcc5d9;
+      max-height: 480px;
+      overflow-y: auto;
+      padding-right: 4px;
+    }
+    .knowledge-text h3 { font-size: 0.95rem; margin: 12px 0 6px; color: #cdd9f4; }
+    .knowledge-text h4 { font-size: 0.82rem; margin: 10px 0 4px; color: #b9c7e8; }
+    .knowledge-text ul, .knowledge-text ol { padding-left: 18px; margin: 4px 0; }
+    .knowledge-text li { margin-bottom: 3px; }
+    .mode-select { display: flex; flex-direction: column; gap: 14px; margin-top: 8px; }
+    .mode-btn {
+      padding: 16px 14px; border: 2px solid #283141; border-radius: 14px;
+      background: #1c212b; cursor: pointer; transition: all 0.25s;
+      display: flex; align-items: center; gap: 14px; color: #cfd7e6;
+    }
+    .mode-btn:hover { border-color: #8ab4f8; background: #232b38; transform: translateY(-2px); }
+    .mode-btn .icon { width: 40px; height: 40px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.4rem; background: linear-gradient(145deg, #2d374a, #1b1f2c); }
+    .mode-btn h3 { font-size: 0.95rem; font-weight: 600; margin-bottom: 3px; }
+    .mode-btn p { font-size: 0.68rem; color: #8892a8; }
+    @media (max-width: 800px) {
+      body { flex-direction: column; }
+      #canvas-container { height: 50vh; }
+      #panel { width: 100%; max-height: 50vh; }
+    }
+  </style>
+</head>
+<body>
+  <div id="canvas-container">
+    <div class="hint" id="hint">🖱 拖拽旋转 | 滚轮缩放 | 右键平移 | 按 R 自动旋转</div>
+    <div class="legend">
+      <div><span style="background:#ff6b7a;"></span> S₁轴 (H↔V)</div>
+      <div><span style="background:#5dfc8e;"></span> S₂轴 (±45°)</div>
+      <div><span style="background:#4da6ff;"></span> S₃轴 (圆偏振)</div>
+      <div><span style="background:#f0a040;"></span> 赤道 (线偏振)</div>
+      <div><span style="background:#ffdd57;"></span> 测量数据点</div>
+    </div>
+  </div>
+
+  <div id="panel">
+    <div class="panel-header">
+      <h2>🔭 庞加莱球 · 偏振态测量</h2>
+      <div class="subtitle">WZP-1 光学偏振实验仪 | 球面半径=1，点距球心=DOP</div>
+    </div>
+    <div id="panel-content"></div>
+  </div>
+
+  <script type="importmap">
+    { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js", "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/" } }
+  </script>
+
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+    // ---------- DOM ----------
+    const container = document.getElementById('canvas-container');
+    const panelContent = document.getElementById('panel-content');
+    const hint = document.getElementById('hint');
+
+    // ---------- Three.js 场景 ----------
+    const scene = new THREE.Scene();
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(container.clientWidth, container.clientHeight);
+    renderer.setClearColor(0x0d1116);
+    container.appendChild(renderer.domElement);
+
+    const camera = new THREE.PerspectiveCamera(42, container.clientWidth/Math.max(container.clientHeight,1), 0.1, 20);
+    camera.position.set(2.5, 1.5, 2.7);
+    camera.lookAt(0,0,0);
+
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.08;
+    controls.minDistance = 1.3;
+    controls.maxDistance = 7;
+    controls.target.set(0,0,0);
+    controls.autoRotate = true;
+    controls.autoRotateSpeed = 0.5;
+    controls.update();
+
+    scene.add(new THREE.AmbientLight(0x445566, 3.5));
+    const d1 = new THREE.DirectionalLight(0xffffff, 3);
+    d1.position.set(5,6,4);
+    scene.add(d1);
+    const d2 = new THREE.DirectionalLight(0x9aaacc, 2);
+    d2.position.set(-3,-1,-4);
+    scene.add(d2);
+
+    const mainGroup = new THREE.Group();
+    scene.add(mainGroup);
+
+    // 球面
+    const sphere = new THREE.Mesh(new THREE.SphereGeometry(1,80,64),
+      new THREE.MeshPhysicalMaterial({color:0x8899cc, roughness:0.45, metalness:0.05, transparent:true, opacity:0.18, depthWrite:false}));
+    sphere.renderOrder=1; mainGroup.add(sphere);
+    const wire = new THREE.Mesh(new THREE.SphereGeometry(1.002,48,32),
+      new THREE.MeshBasicMaterial({color:0x8899bb, wireframe:true, transparent:true, opacity:0.06, depthWrite:false}));
+    wire.renderOrder=2; mainGroup.add(wire);
+
+    // 赤道 XZ平面
+    const eq = new THREE.Mesh(new THREE.TorusGeometry(1,0.016,16,200),
+      new THREE.MeshStandardMaterial({color:0xf0a040, roughness:0.3, metalness:0.3, emissive:0xf0a040, emissiveIntensity:0.7}));
+    eq.rotation.x = Math.PI/2; eq.renderOrder=3; mainGroup.add(eq);
+    const eqThin = new THREE.Mesh(new THREE.TorusGeometry(1,0.005,8,200),
+      new THREE.MeshBasicMaterial({color:0xffc870, transparent:true, opacity:0.4, depthWrite:false}));
+    eqThin.rotation.x = Math.PI/2; eqThin.renderOrder=2; mainGroup.add(eqThin);
+
+    // 经纬线
+    function meridian(lonDeg, col=0x556677, op=0.2) {
+      const lon = THREE.MathUtils.degToRad(lonDeg);
+      const pts = [];
+      for(let i=0;i<=160;i++){ const lat=(i/160)*Math.PI*2; pts.push(new THREE.Vector3(Math.cos(lat)*Math.cos(lon), Math.sin(lat)*Math.cos(lon), Math.sin(lon))); }
+      return new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({color:col, transparent:true, opacity:op}));
+    }
+    [0,60,120,180,240,300].forEach(d=>mainGroup.add(meridian(d)));
+    mainGroup.add(meridian(0,0x8899bb,0.45)); mainGroup.add(meridian(90,0x8899bb,0.45));
+
+    function parallel(latDeg, col=0x556677, op=0.18) {
+      const lat = THREE.MathUtils.degToRad(latDeg);
+      const r = Math.cos(lat), y = Math.sin(lat);
+      const pts = [];
+      for(let i=0;i<=200;i++){ const a=(i/200)*Math.PI*2; pts.push(new THREE.Vector3(r*Math.cos(a), y, r*Math.sin(a))); }
+      return new THREE.Line(new THREE.BufferGeometry().setFromPoints(pts), new THREE.LineBasicMaterial({color:col, transparent:true, opacity:op}));
+    }
+    [-60,-30,30,60].forEach(l=>mainGroup.add(parallel(l)));
+
+    function axis(dir, col) {
+      const g = new THREE.Group();
+      const L=1.4, cl=0.13, sl=L-cl;
+      const shaft = new THREE.Mesh(new THREE.CylinderGeometry(0.018,0.018,sl,10), new THREE.MeshStandardMaterial({color:col, emissive:col, emissiveIntensity:0.6}));
+      shaft.position.y=sl/2; g.add(shaft);
+      const cone = new THREE.Mesh(new THREE.ConeGeometry(0.05,cl,12), new THREE.MeshStandardMaterial({color:col, emissive:col, emissiveIntensity:0.8}));
+      cone.position.y=sl+cl/2; g.add(cone);
+      const ns = new THREE.Mesh(new THREE.CylinderGeometry(0.01,0.01,sl,8), new THREE.MeshStandardMaterial({color:col, emissive:col, emissiveIntensity:0.2, transparent:true, opacity:0.4}));
+      ns.position.y=-sl/2; g.add(ns);
+      const nc = new THREE.Mesh(new THREE.ConeGeometry(0.035,cl*0.7,8), new THREE.MeshStandardMaterial({color:col, emissive:col, emissiveIntensity:0.2, transparent:true, opacity:0.5}));
+      nc.position.y=-(sl+cl*0.35); nc.rotation.z=Math.PI; g.add(nc);
+      if(dir.x===1) g.rotation.z=-Math.PI/2; else if(dir.z===1) g.rotation.x=Math.PI/2; else if(dir.y===1) ;
+      else if(dir.x===-1) g.rotation.z=Math.PI/2; else if(dir.y===-1) g.rotation.z=Math.PI; else if(dir.z===-1) g.rotation.x=-Math.PI/2;
+      return g;
+    }
+    mainGroup.add(axis({x:1,y:0,z:0},0xff6b7a));
+    mainGroup.add(axis({x:0,y:0,z:1},0x5dfc8e));
+    mainGroup.add(axis({x:0,y:1,z:0},0x4da6ff));
+
+    const refs = [[1,0,0,0xff6b7a],[-1,0,0,0xcc4455],[0,0,1,0x5dfc8e],[0,0,-1,0x3ab868],[0,1,0,0x4da6ff],[0,-1,0,0x3d80cc]];
+    refs.forEach(r=>{
+      const dot = new THREE.Mesh(new THREE.SphereGeometry(0.045,16,12), new THREE.MeshStandardMaterial({color:r[3], emissive:r[3], emissiveIntensity:0.6}));
+      dot.position.set(r[0],r[1],r[2]); mainGroup.add(dot);
+    });
+    const origin = new THREE.Mesh(new THREE.SphereGeometry(0.045,12,8), new THREE.MeshStandardMaterial({color:0xffffff, emissive:0xffffff, emissiveIntensity:0.8}));
+    mainGroup.add(origin);
+
+    const dataGroup = new THREE.Group(); dataGroup.renderOrder=7; mainGroup.add(dataGroup);
+    const lineGroup = new THREE.Group(); lineGroup.renderOrder=4; mainGroup.add(lineGroup);
+
+    let dataPoints = [], nextId=0;
+    const palette = [0xffdd57,0xff6ec7,0x4de8ff,0xff9f43,0xa29bfe,0xfd79a8,0x00cec9,0xfdcb6e,0x6c5ce7,0x55efc4];
+
+    function addDataPoint(S0,S1,S2,S3){
+      const norm = Math.sqrt(S1*S1+S2*S2+S3*S3);
+      let dop = S0>1e-9 ? norm/S0 : 0;
+      let sx, sy, sz;
+      if(S0<1e-9){ sx=sy=sz=0; dop=0; }
+      else { sx=S1/S0; sz=S2/S0; sy=S3/S0; } // X=S1, Z=S2, Y=S3
+      const dist = Math.sqrt(sx*sx+sy*sy+sz*sz);
+      let clamped = false;
+      if(dist>1.0001 && dist>0){ sx/=dist; sy/=dist; sz/=dist; dop=1; clamped=true; }
+      else if(dist>1.0) dop=1;
+
+      const color = palette[nextId%palette.length];
+      const id = nextId++;
+      const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.06,20,14), new THREE.MeshStandardMaterial({color, roughness:0.15, emissive:color, emissiveIntensity:1.1}));
+      mesh.position.set(sx, sy, sz);
+      dataGroup.add(mesh);
+      const line = new THREE.Line(new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(0,0,0), new THREE.Vector3(sx,sy,sz)]), new THREE.LineBasicMaterial({color, transparent:true, opacity:0.55}));
+      lineGroup.add(line);
+      const dp = {id,S0,S1,S2,S3,sx,sy,sz,dop,clamped,color,mesh,line};
+      dataPoints.push(dp);
+      refreshDataList();
+      flashPoint(mesh);
+      return dp;
+    }
+
+    function removePoint(id){
+      const idx = dataPoints.findIndex(p=>p.id===id);
+      if(idx===-1)return;
+      const dp=dataPoints[idx];
+      dataGroup.remove(dp.mesh); lineGroup.remove(dp.line);
+      dp.mesh.geometry.dispose(); dp.mesh.material.dispose();
+      dp.line.geometry.dispose(); dp.line.material.dispose();
+      dataPoints.splice(idx,1);
+      refreshDataList();
+    }
+
+    function clearAll(){ [...dataPoints].forEach(p=>removePoint(p.id)); }
+
+    function flashPoint(mesh){
+      const orig=mesh.scale.clone();
+      const start=performance.now();
+      function anim(now){
+        const t=Math.min((now-start)/550,1);
+        const s=1+1.5*Math.sin(t*Math.PI*3)*Math.exp(-t*3.2);
+        mesh.scale.setScalar(Math.max(1,s));
+        mesh.material.emissiveIntensity=1.1+1.6*Math.exp(-t*4);
+        if(t<1) requestAnimationFrame(anim);
+        else { mesh.scale.copy(orig); mesh.material.emissiveIntensity=1.1; }
+      }
+      requestAnimationFrame(anim);
+    }
+
+    function refreshDataList(){
+      const list = document.getElementById('data-list');
+      if(!list) return;
+      if(dataPoints.length===0){ list.innerHTML='<div style="color:#4e576a;text-align:center;padding:14px;">暂无数据点</div>'; return; }
+      list.innerHTML = dataPoints.map(p=>`
+        <div class="data-item">
+          <span class="color-dot" style="background:#${p.color.toString(16).padStart(6,'0')};"></span>
+          <span style="flex:1;">#${p.id} (${p.sx.toFixed(2)},${p.sz.toFixed(2)},${p.sy.toFixed(2)}) DOP=${(p.dop*100).toFixed(0)}%</span>
+          <button class="btn-danger" data-id="${p.id}">✕</button>
+        </div>`).join('');
+      document.querySelectorAll('.btn-danger[data-id]').forEach(b=>b.addEventListener('click', e=>removePoint(parseInt(e.target.dataset.id))));
+    }
+
+    // ---------- UI ----------
+    function renderHome(){
+      panelContent.innerHTML = `
+        <div class="mode-select">
+          <button class="mode-btn" id="btn-knowledge">
+            <div class="icon">📚</div>
+            <div><h3>偏振知识</h3><p>偏振基础、光电流与光强关系、测量方法与注意事项</p></div>
+          </button>
+          <button class="mode-btn" id="btn-current">
+            <div class="icon">⚡</div>
+            <div><h3>光电流模式</h3><p>输入六路光电流值 I_H, I_V, I₊45, I₋45, I_R, I_L</p></div>
+          </button>
+          <button class="mode-btn" id="btn-intensity">
+            <div class="icon">💡</div>
+            <div><h3>光强模式 (斯托克斯参数)</h3><p>直接输入 S₀, S₁, S₂, S₃</p></div>
+          </button>
+        </div>
+        <button class="btn-outline" id="btn-clear-home" style="width:100%;">🗑 清除所有数据点</button>
+        <div style="margin-top:8px;"><h4 style="font-size:0.8rem; color:#a0abbf;">📋 已添加数据点</h4><div class="data-list" id="data-list"></div></div>
+      `;
+      refreshDataList();
+      document.getElementById('btn-knowledge').addEventListener('click', renderKnowledge);
+      document.getElementById('btn-current').addEventListener('click', renderCurrentMode);
+      document.getElementById('btn-intensity').addEventListener('click', renderIntensityMode);
+      document.getElementById('btn-clear-home').addEventListener('click', ()=>{ if(dataPoints.length && confirm('确定清除所有数据点？')) clearAll(); });
+    }
+
+    function renderKnowledge(){
+      panelContent.innerHTML = `
+        <button class="back-btn" id="btn-back">← 返回</button>
+        <div class="knowledge-text">
+          <h3>📖 光的偏振态与庞加莱球</h3>
+          <p><strong>偏振态分类：</strong>完全偏振光（线偏振、圆偏振、椭圆偏振）可用琼斯矢量描述；部分偏振光和非偏振光只能用<strong>斯托克斯矢量</strong>描述。</p>
+          <p><strong>斯托克斯参数：</strong> \(S=(S_0,S_1,S_2,S_3)\)</p>
+          <ul>
+            <li>\(S_0\)：总光强</li>
+            <li>\(S_1 = I_H - I_V\)：水平/垂直线偏振分量差</li>
+            <li>\(S_2 = I_{+45^\circ} - I_{-45^\circ}\)：+45°/-45°线偏振分量差</li>
+            <li>\(S_3 = I_R - I_L\)：右旋/左旋圆偏振分量差</li>
+          </ul>
+          <p>对于完全偏振光，\(S_0^2 = S_1^2+S_2^2+S_3^2\)；偏振度 \(P=\sqrt{S_1^2+S_2^2+S_3^2}/S_0 \le 1\)。</p>
+          <p><strong>庞加莱球：</strong>以归一化坐标 \((s_1,s_2,s_3)=(S_1/S_0, S_2/S_0, S_3/S_0)\) 表示。完全偏振态在单位球面上，部分偏振态在球内，球心为自然光。纬度对应椭圆率，经度对应取向角。</p>
+
+          <h3>⚡ 光电流与光强的关系</h3>
+          <p>光电探测器将光功率 \(P\) 转换为电流：\(I_{ph} = \frac{\eta e}{h\nu}P = R P\)，其中 \(R\) 为响应度。因此<strong>光电流正比于光强</strong>，相对光强可直接用光电流比值代替。若使用跨阻放大器，电压 \(V\propto P\)，效果相同。</p>
+
+          <h3>🧪 测量方法（光电流法 & 光强法）</h3>
+          <p><strong>光路：</strong>光源 → 待测光 → λ/4波片(可移除) → 旋转检偏器 → 探测器。</p>
+          <p><strong>步骤（先不装λ/4波片）：</strong></p>
+          <ol>
+            <li>检偏器0°记录 \(I_H\)；90°记录 \(I_V\)；45°记录 \(I_{+45}\)；135°记录 \(I_{-45}\)。</li>
+            <li>插入λ/4波片（快轴45°），检偏器0°记录 \(I_R\)，90°记录 \(I_L\)。</li>
+          </ol>
+          <p><strong>计算斯托克斯参数：</strong></p>
+          <ul>
+            <li>\(S_0 = I_H + I_V\) （或 \(I_{+45}+I_{-45}\) 验证）</li>
+            <li>\(S_1 = I_H - I_V\)</li>
+            <li>\(S_2 = I_{+45} - I_{-45}\)</li>
+            <li>\(S_3 = I_R - I_L\)</li>
+          </ul>
+          <p>之后归一化得到 \((s_1,s_2,s_3)\)，在庞加莱球上绘制。光强法只需将电流值替换为已校准的光功率值即可。</p>
+
+          <h3>⚠️ 注意事项</h3>
+          <ul>
+            <li>探测器工作在线性区，避免饱和；必要时用中性密度滤光片。</li>
+            <li>测量前扣除暗电流/背景光；光功率计需调零。</li>
+            <li>光源在测量期间应保持稳定，可加参考光束监控。</li>
+            <li>偏振片消光比 >1000:1，λ/4波片需与波长匹配，角度精确。</li>
+            <li>旋转角度误差 ≤±0.5°，避免串扰。</li>
+            <li>光束正入射探测器中心，透镜避免附加偏振。</li>
+            <li>每个角度多次读数取平均；若偏振度明显>1，检查未扣除背景或系统误差。</li>
+          </ul>
+        </div>
+      `;
+      document.getElementById('btn-back').addEventListener('click', renderHome);
+    }
+
+    function renderCurrentMode(){
+      panelContent.innerHTML = `
+        <button class="back-btn" id="btn-back">← 返回</button>
+        <div class="card">
+          <h4>⚡ 光电流输入（已扣除暗电流）</h4>
+          <div class="input-row">
+            <div class="input-group"><label>I_H (0°)</label><input id="ih" type="number" step="any" placeholder="100"></div>
+            <div class="input-group"><label>I_V (90°)</label><input id="iv" type="number" step="any" placeholder="20"></div>
+            <div class="input-group"><label>I₊45 (45°)</label><input id="i45" type="number" step="any" placeholder="60"></div>
+          </div>
+          <div class="input-row">
+            <div class="input-group"><label>I₋45 (135°)</label><input id="i135" type="number" step="any" placeholder="60"></div>
+            <div class="input-group"><label>I_R (QWP+0°)</label><input id="ir" type="number" step="any" placeholder="90"></div>
+            <div class="input-group"><label>I_L (QWP+90°)</label><input id="il" type="number" step="any" placeholder="10"></div>
+          </div>
+          <div style="font-size:0.65rem;color:#5e6b80;">S₀=I_H+I_V, S₁=I_H−I_V, S₂=I₊45−I₋45, S₃=I_R−I_L</div>
+        </div>
+        <button class="btn btn-primary" id="btn-calc-current">🔍 计算并绘制</button>
+        <div class="result-box" id="result-current" style="display:none;"></div>
+        <div style="margin-top:6px;"><h4 style="font-size:0.8rem; color:#a0abbf;">📋 数据点</h4><div class="data-list" id="data-list"></div></div>
+      `;
+      refreshDataList();
+      document.getElementById('btn-back').addEventListener('click', renderHome);
+      document.getElementById('btn-calc-current').addEventListener('click', ()=>{
+        const ih = parseFloat(document.getElementById('ih').value);
+        const iv = parseFloat(document.getElementById('iv').value);
+        const i45 = parseFloat(document.getElementById('i45').value);
+        const i135 = parseFloat(document.getElementById('i135').value);
+        const ir = parseFloat(document.getElementById('ir').value);
+        const il = parseFloat(document.getElementById('il').value);
+        if([ih,iv,i45,i135,ir,il].some(isNaN)) return alert('请完整填写六个光电流值');
+        const S0 = ih + iv;
+        const S1 = ih - iv;
+        const S2 = i45 - i135;
+        const S3 = ir - il;
+        const dp = addDataPoint(S0, S1, S2, S3);
+        const box = document.getElementById('result-current');
+        box.style.display='block';
+        box.innerHTML = `
+          <div>S₀=${S0.toFixed(2)} S₁=${S1.toFixed(2)} S₂=${S2.toFixed(2)} S₃=${S3.toFixed(2)}</div>
+          <div>坐标 (${dp.sx.toFixed(3)}, ${dp.sz.toFixed(3)}, ${dp.sy.toFixed(3)})  DOP=${(dp.dop*100).toFixed(1)}% ${dp.clamped?'<span class="val" style="color:#f5a97f;">(已归一化)</span>':''}</div>
+        `;
+      });
+    }
+
+    function renderIntensityMode(){
+      panelContent.innerHTML = `
+        <button class="back-btn" id="btn-back">← 返回</button>
+        <div class="card">
+          <h4>💡 斯托克斯参数</h4>
+          <div class="input-row">
+            <div class="input-group"><label>S₀</label><input id="s0" type="number" step="any" placeholder="100"></div>
+            <div class="input-group"><label>S₁</label><input id="s1" type="number" step="any" placeholder="60"></div>
+          </div>
+          <div class="input-row">
+            <div class="input-group"><label>S₂</label><input id="s2" type="number" step="any" placeholder="20"></div>
+            <div class="input-group"><label>S₃</label><input id="s3" type="number" step="any" placeholder="0"></div>
+          </div>
+        </div>
+        <button class="btn btn-primary" id="btn-calc-intensity">✨ 计算并绘制</button>
+        <div class="result-box" id="result-intensity" style="display:none;"></div>
+        <div style="margin-top:6px;"><h4 style="font-size:0.8rem; color:#a0abbf;">📋 数据点</h4><div class="data-list" id="data-list"></div></div>
+      `;
+      refreshDataList();
+      document.getElementById('btn-back').addEventListener('click', renderHome);
+      document.getElementById('btn-calc-intensity').addEventListener('click', ()=>{
+        const S0 = parseFloat(document.getElementById('s0').value);
+        const S1 = parseFloat(document.getElementById('s1').value);
+        const S2 = parseFloat(document.getElementById('s2').value);
+        const S3 = parseFloat(document.getElementById('s3').value);
+        if([S0,S1,S2,S3].some(isNaN)) return alert('请填写全部四个参数');
+        if(S0<=0) return alert('S₀必须为正');
+        const dp = addDataPoint(S0, S1, S2, S3);
+        const box = document.getElementById('result-intensity');
+        box.style.display='block';
+        box.innerHTML = `坐标 (${dp.sx.toFixed(3)}, ${dp.sz.toFixed(3)}, ${dp.sy.toFixed(3)}) DOP=${(dp.dop*100).toFixed(1)}% ${dp.clamped?'<span style="color:#f5a97f;">(已归一化)</span>':''}`;
+      });
+    }
+
+    function animate(){
+      requestAnimationFrame(animate);
+      controls.update();
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    window.addEventListener('resize', ()=>{
+      const w=container.clientWidth, h=container.clientHeight;
+      renderer.setSize(w,h);
+      camera.aspect = w/Math.max(h,1);
+      camera.updateProjectionMatrix();
+    });
+
+    window.addEventListener('keydown', (e)=>{
+      if(e.key.toLowerCase()==='r'){
+        e.preventDefault();
+        controls.autoRotate = !controls.autoRotate;
+        hint.textContent = controls.autoRotate ? '🖱 拖拽旋转 | 滚轮缩放 | 右键平移 | 按 R 停止' : '🖱 拖拽旋转 | 滚轮缩放 | 右键平移 | 按 R 自动旋转';
+      }
+      if(e.key.toLowerCase()==='f'){
+        camera.position.set(2.5,1.5,2.7);
+        controls.target.set(0,0,0);
+        controls.update();
+      }
+    });
+
+    renderHome();
+    console.log('✅ 庞加莱球启动 | 偏振知识+六光电流模式');
+  </script>
+</body>
+</html>
